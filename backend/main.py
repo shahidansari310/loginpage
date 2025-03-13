@@ -1,8 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from database import get_db_connection
 import bcrypt
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# Allow CORS for frontend (http://localhost:3000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Change if using a different frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 # **1️⃣ Signup Route**
 @app.post("/signup")
@@ -17,14 +27,14 @@ async def signup(name: str, email: str, password: str):
     cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
     existing_user = cursor.fetchone()
     if existing_user:
+        conn.close()
         raise HTTPException(status_code=400, detail="User already exists")
 
     # Hash password
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")  # Convert bytes to string
 
     # Insert user
-    cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
-                   (name, email, hashed_password))
+    cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
     conn.commit()
     conn.close()
 
@@ -43,7 +53,9 @@ async def login(email: str, password: str):
     cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
     user = cursor.fetchone()
 
-    if not user or not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+    conn.close()
+
+    if not user or not bcrypt.checkpw(password.encode("utf-8"), user["password"].encode("utf-8")):
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
     return {"message": "Login successful!"}
