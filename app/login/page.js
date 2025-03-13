@@ -1,4 +1,9 @@
 import React from 'react'
+export const metadata = {
+    title: "Login Page",
+    description: "This is the login page",
+  };
+  
 
 const Login = () => {
   return (
